@@ -31,12 +31,16 @@ const readData = async () => {
 }
 
 app.get('/talker', async (_req, res) => {
-  try {
-    const data = await readData();
-    res.status(200).json(data);
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
+  const data = await readData();
+  res.status(200).json(data);
+});
+
+app.get('/talker/:id', async (req, res) => {
+  const { id } = req.params;
+  const data = await readData();
+  const findTalker = data.find((e) => e.id === Number(id));
+  if (!findTalker) res.status(404).send({ "message": "Pessoa palestrante não encontrada"});
+  res.status(200).json(findTalker);
 });
 
 
