@@ -10,6 +10,7 @@ app.use(express.json());
 
 const HTTP_OK_STATUS = 200;
 const PORT = '3000';
+const PASSWORD_LENGTH = 6;
 
 const dataPath = path.resolve(__dirname, './talker.json');
 
@@ -32,9 +33,8 @@ const readData = async () => {
   }
 };
 
-function createToken(data) {
-  return CryptoJS.AES.encrypt(JSON.stringify(data), secretKey).toString().substring(0, 16);
-}
+const createToken = (data) => CryptoJS.AES.encrypt(JSON
+  .stringify(data), secretKey).toString().substring(0, 16);
 
 app.get('/talker', async (_req, res) => {
   const data = await readData();
@@ -51,6 +51,16 @@ app.get('/talker/:id', async (req, res) => {
 
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  const regex = /^[\w-.]+@([\w-]+\.)+[\w-]{3}$/g;
+  if (!email) return res.status(400).send({ message: 'O campo "email" é obrigatório' });
+  if (!(regex.test(email))) { 
+    return res.status(400).send({ message: 'O "email" deve ter o formato "email@email.com"' });
+  }
+  if (!password) return res.status(400).send({ message: 'O campo "password" é obrigatório' });
+  if (password.length < PASSWORD_LENGTH) {
+    return res.status(400)
+      .send({ message: `O "password" deve ter pelo menos ${PASSWORD_LENGTH} caracteres` });
+  }
   const data = email + password;
   const token = createToken(data);
   res.status(200).json({ token });
