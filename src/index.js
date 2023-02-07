@@ -2,6 +2,8 @@ const fs = require('fs').promises;
 const CryptoJS = require('crypto-js');
 const path = require('path');
 const express = require('express');
+const { validationEmail, validationPassword, validationName, validationAge, validationTalk, 
+  validationWhatched, validationRate, validationToken } = require('./middlewares/ValidateData');
 
 const secretKey = 'secret-key';
 
@@ -9,8 +11,9 @@ const app = express();
 app.use(express.json());
 
 const HTTP_OK_STATUS = 200;
+const HTTP_CREATED_STATUS = 201;
+const HTTP_NFOUND_STATUS = 404;
 const PORT = '3000';
-const PASSWORD_LENGTH = 6;
 
 const dataPath = path.resolve(__dirname, './talker.json');
 
@@ -38,30 +41,47 @@ const createToken = (data) => CryptoJS.AES.encrypt(JSON
 
 app.get('/talker', async (_req, res) => {
   const data = await readData();
-  res.status(200).json(data);
+  res.status(HTTP_OK_STATUS).json(data);
 });
 
 app.get('/talker/:id', async (req, res) => {
   const { id } = req.params;
   const data = await readData();
   const findTalker = data.find((e) => e.id === Number(id));
-  if (!findTalker) res.status(404).send({ message: 'Pessoa palestrante não encontrada' });
-  res.status(200).json(findTalker);
+  if (!findTalker) {
+    return res.status(HTTP_NFOUND_STATUS)
+      .json({ message: 'Pessoa palestrante não encontrada' });
+  }
+  return res.status(200).json(findTalker);
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', validationEmail, validationPassword, async (req, res) => {
   const { email, password } = req.body;
-  const regex = /^[\w-.]+@([\w-]+\.)+[\w-]{3}$/g;
-  if (!email) return res.status(400).send({ message: 'O campo "email" é obrigatório' });
-  if (!(regex.test(email))) { 
-    return res.status(400).send({ message: 'O "email" deve ter o formato "email@email.com"' });
-  }
-  if (!password) return res.status(400).send({ message: 'O campo "password" é obrigatório' });
-  if (password.length < PASSWORD_LENGTH) {
-    return res.status(400)
-      .send({ message: `O "password" deve ter pelo menos ${PASSWORD_LENGTH} caracteres` });
-  }
   const data = email + password;
   const token = createToken(data);
-  res.status(200).json({ token });
+  res.status(HTTP_OK_STATUS).json({ token });
+});
+
+app.post('/talker',
+  validationToken,
+  validationName,
+  validationAge,
+  validationTalk,
+  validationWhatched,
+  validationRate,
+  async (req, res) => {
+  const { name, age, talk } = req.body;
+  const { watchedAt, rate } = talk;
+  const data = await readData();
+  const newPerson = {
+    id: data[data.length - 1].id + 1,
+    name, 
+    age,
+    talk: {
+      watchedAt, 
+      rate,
+    },
+  };
+  await fs.writeFile(dataPath, JSON.stringify([...data, newPerson]));
+  return res.status(HTTP_CREATED_STATUS).json(newPerson);
 });
