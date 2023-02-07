@@ -112,3 +112,19 @@ app.put('/talker/:id',
   await fs.writeFile(dataPath, updated);
   return res.status(200).json(data[index]);
 });
+
+app.delete('/talker/:id', 
+  validationToken,
+  async (req, res) => {
+  const { id } = req.params;
+  const data = await readData();
+  const index = data.findIndex((e) => e.id === Number(id));
+  if (index < 0) { 
+    return res.status(HTTP_NFOUND_STATUS)
+      .json({ message: 'Pessoa palestrante não encontrada' });
+  }
+  data.splice(index, 1);
+  const updated = JSON.stringify(data, null, 2);
+  await fs.writeFile(dataPath, updated);
+  return res.status(204).end();
+});
